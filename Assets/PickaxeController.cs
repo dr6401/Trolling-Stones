@@ -1,51 +1,56 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+
 public class PickaxeController : MonoBehaviour
 {
     public float rotationSpeed = 10f; // Speed at which the pickaxe rotates
-    private Vector2 targetPosition;
-    private float targetAngle;
-    private bool isClicked = false; // Track if the mouse is clicked
-    public float swingForce = 10f;
+    private Vector2 targetPosition; // Target position for rotation
+    private float targetAngle; // Calculated target angle
+    public float swingForce = 10f; // Force of the swing
+    public float screenDivisionX = 0f; // X position dividing the screen for the two pickaxes
+    public bool isLeftPickaxe = true; // Determine if this is the left pickaxe
+    public Transform otherPickaxe; // Reference to the other pickaxe's Transform
 
     void Update()
     {
-        // Check if the player clicked on the screen
-        if (Input.GetMouseButtonDown(0)) // 0 is the left mouse button
+        if (Input.GetMouseButton(0)) // Check if the left mouse button is clicked
         {
-            isClicked = true; // Set to true when clicked
+            // Detect the mouse position in world space
+            Vector3 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
+            // Determine which pickaxe's region the click occurred in
+            bool clickedLeft = mousePosition.x < screenDivisionX;
+
+            // Set the target position and calculate rotation based on the relevant pickaxe
+            Transform relevantPickaxe = clickedLeft ? transform : otherPickaxe;
+            RotatePickaxes(mousePosition, relevantPickaxe);
         }
+    }
 
-        if (Input.GetMouseButtonUp(0)) // 0 is the left mouse button
-        {
-            isClicked = false; // Set to true when clicked
-        }
+    void RotatePickaxes(Vector3 mousePosition, Transform relevantPickaxe)
+    {
+        // Calculate the direction vector from the relevant pickaxe to the mouse position
+        Vector2 direction = (Vector2)mousePosition - (Vector2)relevantPickaxe.position;
 
-        // If clicked, start the rotation
-        if (isClicked)
-        {
-            // Detect the mouse position
-            targetPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        // Calculate the target angle based on the mouse position
+        targetAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90;
 
-            // Calculate the direction vector from the pickaxe holder to the mouse position
-            Vector2 direction = targetPosition - (Vector2)transform.position;
+        // Apply rotation to both pickaxes
+        RotatePickaxe(transform, targetAngle);
+        RotatePickaxe(otherPickaxe, targetAngle);
+    }
 
-            // Calculate the target angle based on the mouse position
-            targetAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90;
+    void RotatePickaxe(Transform pickaxe, float angle)
+    {
+        // Get the current angle of the pickaxe
+        float currentAngle = pickaxe.eulerAngles.z;
 
-            // Get the current angle of the pickaxe holder
-            float currentAngle = transform.eulerAngles.z;
+        // Gradually rotate the pickaxe towards the target angle
+        float angleDifference = Mathf.DeltaAngle(currentAngle, angle);
+        float newAngle = Mathf.LerpAngle(currentAngle, currentAngle + angleDifference, rotationSpeed * Time.deltaTime);
 
-            // Calculate the difference between the current angle and the target angle
-            float angleDifference = Mathf.DeltaAngle(currentAngle, targetAngle);
-
-            // Gradually rotate the pickaxe towards the target angle, respecting the shortest direction
-            float angle = Mathf.LerpAngle(currentAngle, currentAngle + angleDifference, rotationSpeed * Time.deltaTime);
-
-            // Apply the rotation to the pickaxe holder
-            transform.rotation = Quaternion.Euler(0f, 0f, angle);
-        }
+        // Apply the rotation
+        pickaxe.rotation = Quaternion.Euler(0f, 0f, newAngle);
     }
 }
